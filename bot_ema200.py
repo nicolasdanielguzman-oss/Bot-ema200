@@ -19,13 +19,7 @@ API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
 
 # ========== CONFIGURACIÓN DEL PROXY ==========
-PROXY_HOST = "nl.socks.nordhold.net"
-PROXY_PUERTO = "1080"
-PROXY_USUARIO = "zNrxnBebGWxV6zSxzHGe26ar"
-PROXY_CONTRASEÑA = "k2Qji91Au1JxN61SUercEfpW"
-
-proxy_url = f"socks5h://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
-proxies = {'http': proxy_url, 'https': proxy_url}
+proxies = None
 
 # ========== PARÁMETROS ==========
 TIMEFRAME = '1m'  # 🔥 Cambiado de 5m a 1m
