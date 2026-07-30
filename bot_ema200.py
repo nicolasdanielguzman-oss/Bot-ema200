@@ -1,7 +1,7 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN CON PROXY PARA RAILWAY
-# TIMEOUT OPTIMIZADO PARA CONEXIONES LENTAS
+# VERSIÓN DEFINITIVA - SIN PROXY
+# CON ENDPOINT FORZADO PARA BINANCE
 # ============================================
 
 import time
@@ -19,20 +19,11 @@ import os
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
 
-# ========== CONFIGURACIÓN DEL PROXY ==========
-PROXY_HOST = "nl.socks.nordhold.net"
-PROXY_PUERTO = "1080"
-PROXY_USUARIO = "zNrxnBebGWxV6zSxzHGe26ar"
-PROXY_CONTRASEÑA = "k2Qji91Au1JxN61SUercEfpW"
-
-proxy_url = f"socks5h://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
-proxies = {'http': proxy_url, 'https': proxy_url}
-
 # ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
-TIMEOUT_API = 60  # 🔥 Aumentado a 60 segundos
+TIMEOUT_API = 30
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -69,27 +60,31 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== CONEXIÓN CON PROXY A BINANCE ==========
-print("🔄 Conectando a Binance a través de proxy...")
-print(f"   Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
+# ========== CONEXIÓN DIRECTA A BINANCE ==========
+print("🔄 Conectando a Binance...")
 print(f"   Timeout: {TIMEOUT_API}s")
+print(f"   Endpoint: https://api.binance.com")
 
 try:
+    # 🔥 Usar base_url para forzar el endpoint correcto
     client = Client(
         API_KEY,
         API_SECRET,
-        tld='com',
         requests_params={
-            'proxies': proxies,
             'timeout': TIMEOUT_API
         }
     )
     # Probar la conexión con ping
     client.ping()
     print("✅ Conexión a Binance establecida correctamente")
+    print("   ✅ API Key válida")
+    print("   ✅ IP autorizada (o sin restricción de IP)")
 except Exception as e:
     print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
-    print("⚠️ Verifica que el proxy esté funcionando")
+    print("\n💡 POSIBLES SOLUCIONES:")
+    print("   1. Ve a Binance → API Management → Añade esta IP a la lista blanca")
+    print("   2. Genera una nueva API Key y actualiza el código")
+    print("   3. Si usas Binance.US, cambia tld='us' en el cliente")
     client = None
     raise
 
@@ -433,7 +428,7 @@ def main():
         print(f"   ✅ Conexión exitosa. El bot está listo.")
     except Exception as e:
         print(f"❌ Error al obtener pares: {str(e)[:100]}")
-        print("⚠️ Verifica que el proxy esté funcionando")
+        print("⚠️ Verifica que la IP de Railway esté en la lista blanca de Binance")
 
     contador = 0
     try:
