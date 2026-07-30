@@ -1,7 +1,6 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN DEFINITIVA CON PROXY WEBSHARE
-# CONEXIÓN ESTABLE Y SEGURA
+# VERSIÓN CON PROXY WEBSHARE CORREGIDO
 # ============================================
 
 import time
@@ -27,15 +26,23 @@ PROXY_PUERTO = "80"
 PROXY_USUARIO = "Ipnwlrhq"
 PROXY_CONTRASEÑA = "8e2vbj68pj30"
 
-# Construir la URL del proxy
+# 🔥 Formato correcto para Webshare
 proxy_url = f"http://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
-proxies = {'http': proxy_url, 'https': proxy_url}
+
+proxies = {
+    'http': proxy_url,
+    'https': proxy_url,
+}
+
+# Configurar variables de entorno para requests
+os.environ['HTTP_PROXY'] = proxy_url
+os.environ['HTTPS_PROXY'] = proxy_url
 
 # ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
-TIMEOUT_API = 30
+TIMEOUT_API = 60  # 🔥 Aumentado a 60 segundos
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -72,45 +79,23 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== FUNCIÓN PARA OBTENER IP PÚBLICA ==========
-def obtener_ip_publica():
-    """Obtiene la IP pública del servidor usando múltiples servicios"""
-    servicios = [
-        'https://api.ipify.org',
-        'https://icanhazip.com',
-        'https://checkip.amazonaws.com',
-        'https://ifconfig.me/ip'
-    ]
-    
-    for servicio in servicios:
-        try:
-            ip = requests.get(servicio, timeout=5, proxies=proxies).text.strip()
-            if ip and '.' in ip:
-                return ip
-        except:
-            continue
-    
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except:
-        return "No se pudo obtener la IP"
-
-# ========== CONEXIÓN A BINANCE CON PROXY ==========
+# ========== VERIFICAR PROXY ==========
 print("═" * 80)
-print("🔍 CONFIGURACIÓN DE PROXY WEBSHARE")
+print("🔍 VERIFICANDO PROXY WEBSHARE")
 print("═" * 80)
 print(f"📌 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
 print(f"📌 Usuario: {PROXY_USUARIO}")
 print("═" * 80)
 
-# Obtener y mostrar la IP pública
-ip_publica = obtener_ip_publica()
-print(f"\n📌 IP PÚBLICA DEL SERVIDOR: {ip_publica}")
+# Probar el proxy con una petición simple
+try:
+    test_ip = requests.get('https://api.ipify.org', proxies=proxies, timeout=10)
+    print(f"✅ Proxy funcionando. IP pública: {test_ip.text}")
+except Exception as e:
+    print(f"⚠️ Error al probar el proxy: {str(e)[:100]}")
+    print("   Continuando de todas formas...")
 
+# ========== CONEXIÓN A BINANCE CON PROXY ==========
 print(f"\n🔄 Conectando a Binance a través del proxy...")
 print(f"   Timeout: {TIMEOUT_API}s")
 
@@ -129,11 +114,11 @@ try:
     print("   ✅ API Key válida")
     print("   ✅ Proxy funcionando correctamente")
 except Exception as e:
-    print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
+    print(f"❌ Error al conectar con Binance: {str(e)[:300]}")
     print("\n💡 POSIBLES SOLUCIONES:")
     print("   1. Verifica que las credenciales del proxy sean correctas")
-    print("   2. Comprueba que el proxy de Webshare esté activo")
-    print("   3. Revisa que tengas saldo en Webshare (si es de pago)")
+    print("   2. Comprueba que tengas saldo en Webshare")
+    print("   3. Prueba con el puerto 8080 en lugar de 80")
     client = None
     raise
 
@@ -353,13 +338,6 @@ def verificar_volumen_entrada(df):
     return volumen_actual > volumen_promedio * VOLUMEN_ENTRADA_MINIMO
 
 def estrategia_ema200(symbol):
-    """
-    ESTRATEGIA EMA 200 + CONFIRMACIÓN
-    1. Precio > EMA200 → SOLO LONG
-    2. Precio < EMA200 → SOLO SHORT
-    3. Cruce de EMA200 + Vela fuerte + Volumen
-    """
-    
     df = obtener_velas(symbol, '1m', 250)
     if df is None or len(df) < 201:
         return None
