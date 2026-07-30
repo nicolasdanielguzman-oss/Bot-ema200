@@ -1,7 +1,7 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN DEFINITIVA - SIN PROXY
-# CON ENDPOINT FORZADO PARA BINANCE
+# VERSIÓN CON DETECCIÓN DE IP PÚBLICA
+# PARA CONFIGURAR LISTA BLANCA DE BINANCE
 # ============================================
 
 import time
@@ -14,6 +14,8 @@ from binance.exceptions import BinanceAPIException
 import json
 import ta
 import os
+import socket
+import urllib.request
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
@@ -60,13 +62,53 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== CONEXIÓN DIRECTA A BINANCE ==========
-print("🔄 Conectando a Binance...")
+# ========== FUNCIÓN PARA OBTENER IP PÚBLICA ==========
+def obtener_ip_publica():
+    """Obtiene la IP pública del servidor usando múltiples servicios"""
+    servicios = [
+        'https://api.ipify.org',
+        'https://icanhazip.com',
+        'https://checkip.amazonaws.com',
+        'https://ifconfig.me/ip'
+    ]
+    
+    for servicio in servicios:
+        try:
+            ip = requests.get(servicio, timeout=5).text.strip()
+            if ip and '.' in ip:  # Validar que es una IP válida
+                return ip
+        except:
+            continue
+    
+    # Si falla todo, intentar con socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return "No se pudo obtener la IP"
+
+# ========== CONEXIÓN A BINANCE ==========
+print("═" * 80)
+print("🔍 DETECCIÓN DE IP PARA BINANCE")
+print("═" * 80)
+
+# Obtener y mostrar la IP pública
+ip_publica = obtener_ip_publica()
+print(f"\n📌 IP PÚBLICA DEL SERVIDOR: {ip_publica}")
+print("\n⚠️ IMPORTANTE:")
+print("   1. Copia esta IP (la de arriba)")
+print("   2. Ve a Binance → API Management")
+print("   3. En 'Restrict access to trusted IPs', añade esta IP")
+print("   4. Si ya la tienes añadida, ignora este mensaje")
+print("═" * 80)
+
+print(f"\n🔄 Conectando a Binance...")
 print(f"   Timeout: {TIMEOUT_API}s")
-print(f"   Endpoint: https://api.binance.com")
 
 try:
-    # 🔥 Usar base_url para forzar el endpoint correcto
     client = Client(
         API_KEY,
         API_SECRET,
@@ -74,17 +116,16 @@ try:
             'timeout': TIMEOUT_API
         }
     )
-    # Probar la conexión con ping
     client.ping()
     print("✅ Conexión a Binance establecida correctamente")
     print("   ✅ API Key válida")
     print("   ✅ IP autorizada (o sin restricción de IP)")
 except Exception as e:
     print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
-    print("\n💡 POSIBLES SOLUCIONES:")
-    print("   1. Ve a Binance → API Management → Añade esta IP a la lista blanca")
-    print("   2. Genera una nueva API Key y actualiza el código")
-    print("   3. Si usas Binance.US, cambia tld='us' en el cliente")
+    print("\n💡 SOLUCIONES:")
+    print(f"   1. Ve a Binance → API Management")
+    print(f"   2. Añade esta IP a la lista blanca: {ip_publica}")
+    print("   3. Genera una nueva API Key si es necesario")
     client = None
     raise
 
@@ -428,7 +469,7 @@ def main():
         print(f"   ✅ Conexión exitosa. El bot está listo.")
     except Exception as e:
         print(f"❌ Error al obtener pares: {str(e)[:100]}")
-        print("⚠️ Verifica que la IP de Railway esté en la lista blanca de Binance")
+        print(f"⚠️ Añade la IP {ip_publica} a la lista blanca de Binance")
 
     contador = 0
     try:
