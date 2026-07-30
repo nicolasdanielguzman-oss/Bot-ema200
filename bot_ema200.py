@@ -1,6 +1,6 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN CON AUTENTICACIÓN EXPLÍCITA DE PROXY
+# VERSIÓN SIMPLIFICADA - SIN HEADERS DUPLICADOS
 # ============================================
 
 import time
@@ -13,7 +13,6 @@ from binance.exceptions import BinanceAPIException
 import json
 import ta
 import os
-import base64
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
@@ -25,18 +24,7 @@ PROXY_PUERTO = "80"
 PROXY_USUARIO = "Ipnwlrhq"
 PROXY_CONTRASEÑA = "8e2vbj68pj30"
 
-# 🔥 Configurar el proxy con autenticación explícita
-proxy_url = f"http://{PROXY_HOST}:{PROXY_PUERTO}"
-
-# Crear las cabeceras de autenticación básica
-auth_string = f"{PROXY_USUARIO}:{PROXY_CONTRASEÑA}"
-auth_bytes = auth_string.encode('utf-8')
-auth_b64 = base64.b64encode(auth_bytes).decode('utf-8')
-
-proxy_headers = {
-    'Proxy-Authorization': f'Basic {auth_b64}'
-}
-
+proxy_url = f"http://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
 proxies = {
     'http': proxy_url,
     'https': proxy_url,
@@ -90,25 +78,18 @@ print("═" * 80)
 print("📊 CONFIGURACIÓN DEL PROXY:")
 print(f"   🔥 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
 print(f"   🔥 Usuario: {PROXY_USUARIO}")
-print(f"   🔥 Autenticación: Basic (Base64)")
 print("═" * 80)
 
 print(f"\n🔄 Conectando a Binance a través del proxy...")
 
 try:
-    # 🔥 Usar una sesión de requests con autenticación explícita
-    session = requests.Session()
-    session.proxies.update(proxies)
-    session.headers.update(proxy_headers)
-    
-    # Crear el cliente con la sesión configurada
+    # 🔥 SIMPLIFICADO: Solo pasamos los proxies, sin headers duplicados
     client = Client(
         API_KEY,
         API_SECRET,
         requests_params={
             'proxies': proxies,
-            'timeout': TIMEOUT_API,
-            'headers': proxy_headers
+            'timeout': TIMEOUT_API
         }
     )
     
@@ -117,7 +98,6 @@ try:
     print("✅ Conexión a Binance establecida correctamente")
     print("   ✅ API Key válida")
     print("   ✅ Proxy funcionando correctamente")
-    print("   ✅ Autenticación básica configurada")
     
 except Exception as e:
     print(f"❌ Error al conectar con Binance: {str(e)[:300]}")
@@ -126,6 +106,7 @@ except Exception as e:
     print("   2. Comprueba que tengas saldo en Webshare")
     print("   3. Prueba con el puerto 8080 en lugar de 80")
     print("   4. Asegúrate de que el proxy esté activo en Webshare")
+    print("   5. Si usas Binance.US, cambia a tld='us'")
     client = None
     raise
 
