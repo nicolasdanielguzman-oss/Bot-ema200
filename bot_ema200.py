@@ -1,7 +1,7 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# ESTRATEGIA SIMPLE Y ROBUSTA
-# VERSIÓN SIN PROXY PARA RAILWAY
+# VERSIÓN CON PROXY PARA RAILWAY
+# TIMEOUT OPTIMIZADO PARA CONEXIONES LENTAS
 # ============================================
 
 import time
@@ -19,11 +19,20 @@ import os
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
 
+# ========== CONFIGURACIÓN DEL PROXY ==========
+PROXY_HOST = "nl.socks.nordhold.net"
+PROXY_PUERTO = "1080"
+PROXY_USUARIO = "zNrxnBebGWxV6zSxzHGe26ar"
+PROXY_CONTRASEÑA = "k2Qji91Au1JxN61SUercEfpW"
+
+proxy_url = f"socks5h://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
+proxies = {'http': proxy_url, 'https': proxy_url}
+
 # ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
-TIMEOUT_API = 60  # 🔥 Aumentado para evitar timeouts
+TIMEOUT_API = 60  # 🔥 Aumentado a 60 segundos
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -60,25 +69,29 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== CONEXIÓN DIRECTA A BINANCE (SIN PROXY) ==========
-print("🔄 Conectando a Binance...")
+# ========== CONEXIÓN CON PROXY A BINANCE ==========
+print("🔄 Conectando a Binance a través de proxy...")
+print(f"   Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
+print(f"   Timeout: {TIMEOUT_API}s")
+
 try:
     client = Client(
         API_KEY,
         API_SECRET,
         tld='com',
         requests_params={
+            'proxies': proxies,
             'timeout': TIMEOUT_API
         }
     )
-    # Probar la conexión
+    # Probar la conexión con ping
     client.ping()
     print("✅ Conexión a Binance establecida correctamente")
 except Exception as e:
     print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
-    print("⚠️ Verifica que la API Key sea válida y que la IP de Railway esté en la lista blanca")
+    print("⚠️ Verifica que el proxy esté funcionando")
     client = None
-    raise  # Detiene la ejecución
+    raise
 
 # ========== PAPER TRADING ==========
 class PaperTrading:
@@ -417,8 +430,10 @@ def main():
     try:
         pares_test = obtener_pares_con_volumen()
         print(f"✅ Pares encontrados: {len(pares_test)}")
+        print(f"   ✅ Conexión exitosa. El bot está listo.")
     except Exception as e:
         print(f"❌ Error al obtener pares: {str(e)[:100]}")
+        print("⚠️ Verifica que el proxy esté funcionando")
 
     contador = 0
     try:
