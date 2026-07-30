@@ -1,7 +1,7 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN CON DETECCIÓN DE IP PÚBLICA
-# PARA CONFIGURAR LISTA BLANCA DE BINANCE
+# VERSIÓN DEFINITIVA CON PROXY WEBSHARE
+# CONEXIÓN ESTABLE Y SEGURA
 # ============================================
 
 import time
@@ -20,6 +20,16 @@ import urllib.request
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
+
+# ========== CONFIGURACIÓN DEL PROXY (WEBSHARE.IO) ==========
+PROXY_HOST = "p.webshare.io"
+PROXY_PUERTO = "80"
+PROXY_USUARIO = "Ipnwlrhq"
+PROXY_CONTRASEÑA = "8e2vbj68pj30"
+
+# Construir la URL del proxy
+proxy_url = f"http://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
+proxies = {'http': proxy_url, 'https': proxy_url}
 
 # ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
@@ -74,13 +84,12 @@ def obtener_ip_publica():
     
     for servicio in servicios:
         try:
-            ip = requests.get(servicio, timeout=5).text.strip()
-            if ip and '.' in ip:  # Validar que es una IP válida
+            ip = requests.get(servicio, timeout=5, proxies=proxies).text.strip()
+            if ip and '.' in ip:
                 return ip
         except:
             continue
     
-    # Si falla todo, intentar con socket
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -90,22 +99,19 @@ def obtener_ip_publica():
     except:
         return "No se pudo obtener la IP"
 
-# ========== CONEXIÓN A BINANCE ==========
+# ========== CONEXIÓN A BINANCE CON PROXY ==========
 print("═" * 80)
-print("🔍 DETECCIÓN DE IP PARA BINANCE")
+print("🔍 CONFIGURACIÓN DE PROXY WEBSHARE")
+print("═" * 80)
+print(f"📌 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
+print(f"📌 Usuario: {PROXY_USUARIO}")
 print("═" * 80)
 
 # Obtener y mostrar la IP pública
 ip_publica = obtener_ip_publica()
 print(f"\n📌 IP PÚBLICA DEL SERVIDOR: {ip_publica}")
-print("\n⚠️ IMPORTANTE:")
-print("   1. Copia esta IP (la de arriba)")
-print("   2. Ve a Binance → API Management")
-print("   3. En 'Restrict access to trusted IPs', añade esta IP")
-print("   4. Si ya la tienes añadida, ignora este mensaje")
-print("═" * 80)
 
-print(f"\n🔄 Conectando a Binance...")
+print(f"\n🔄 Conectando a Binance a través del proxy...")
 print(f"   Timeout: {TIMEOUT_API}s")
 
 try:
@@ -113,19 +119,21 @@ try:
         API_KEY,
         API_SECRET,
         requests_params={
+            'proxies': proxies,
             'timeout': TIMEOUT_API
         }
     )
+    # Probar la conexión con ping
     client.ping()
     print("✅ Conexión a Binance establecida correctamente")
     print("   ✅ API Key válida")
-    print("   ✅ IP autorizada (o sin restricción de IP)")
+    print("   ✅ Proxy funcionando correctamente")
 except Exception as e:
     print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
-    print("\n💡 SOLUCIONES:")
-    print(f"   1. Ve a Binance → API Management")
-    print(f"   2. Añade esta IP a la lista blanca: {ip_publica}")
-    print("   3. Genera una nueva API Key si es necesario")
+    print("\n💡 POSIBLES SOLUCIONES:")
+    print("   1. Verifica que las credenciales del proxy sean correctas")
+    print("   2. Comprueba que el proxy de Webshare esté activo")
+    print("   3. Revisa que tengas saldo en Webshare (si es de pago)")
     client = None
     raise
 
@@ -467,9 +475,10 @@ def main():
         pares_test = obtener_pares_con_volumen()
         print(f"✅ Pares encontrados: {len(pares_test)}")
         print(f"   ✅ Conexión exitosa. El bot está listo.")
+        print(f"   ✅ Proxy Webshare configurado correctamente")
     except Exception as e:
         print(f"❌ Error al obtener pares: {str(e)[:100]}")
-        print(f"⚠️ Añade la IP {ip_publica} a la lista blanca de Binance")
+        print("⚠️ Verifica la conexión del proxy")
 
     contador = 0
     try:
