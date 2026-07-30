@@ -1,7 +1,7 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
 # ESTRATEGIA SIMPLE Y ROBUSTA
-# CONFIGURACIÓN: APALANCAMIENTO x7 | TP 12% CAPITAL | SL 15% CAPITAL
+# VERSIÓN SIN PROXY PARA RAILWAY
 # ============================================
 
 import time
@@ -13,34 +13,32 @@ from binance.client import Client
 from binance.exceptions import BinanceAPIException
 import json
 import ta
+import os
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
 
-# ========== CONFIGURACIÓN DEL PROXY ==========
-proxies = None
-
-# ========== PARÁMETROS ==========
-TIMEFRAME = '1m'  # 🔥 Cambiado de 5m a 1m
-EMA_PERIODO = 200
+# ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
-TIEMPO_ESPERA = 15  # 🔥 Reducido para 1m
-TIMEOUT_API = 30
+TIEMPO_ESPERA = 15
+TIMEOUT_API = 60  # 🔥 Aumentado para evitar timeouts
+
+# ========== PARÁMETROS TENDENCIA ==========
+TIMEFRAME = '1m'
+EMA_PERIODO = 200
 
 # ========== GESTIÓN DE RIESGO ==========
 APALANCAMIENTO = 7
 CAPITAL_POR_OPERACION = 0.07
-TP_CAPITAL = 12  # 12% de ganancia sobre capital
-SL_CAPITAL = 15  # 15% de pérdida sobre capital
-
-# Calcular % de movimiento del precio
-TP_PORCENTAJE_PRECIO = TP_CAPITAL / APALANCAMIENTO  # 12/7 = 1.71%
-SL_PORCENTAJE_PRECIO = SL_CAPITAL / APALANCAMIENTO  # 15/7 = 2.14%
+TP_CAPITAL = 12
+SL_CAPITAL = 15
+TP_PORCENTAJE_PRECIO = TP_CAPITAL / APALANCAMIENTO
+SL_PORCENTAJE_PRECIO = SL_CAPITAL / APALANCAMIENTO
 
 # ========== FILTROS ==========
-MAX_SUBIDA_24H = 25  # Menos restrictivo
+MAX_SUBIDA_24H = 25
 VOLUMEN_ENTRADA_MINIMO = 1.3
 
 # ========== EXCLUSIONES ==========
@@ -62,16 +60,25 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== CONEXIÓN CON PROXY ==========
-client = Client(
-    API_KEY,
-    API_SECRET,
-    tld='com',
-    requests_params={
-        'proxies': proxies,
-        'timeout': TIMEOUT_API
-    }
-)
+# ========== CONEXIÓN DIRECTA A BINANCE (SIN PROXY) ==========
+print("🔄 Conectando a Binance...")
+try:
+    client = Client(
+        API_KEY,
+        API_SECRET,
+        tld='com',
+        requests_params={
+            'timeout': TIMEOUT_API
+        }
+    )
+    # Probar la conexión
+    client.ping()
+    print("✅ Conexión a Binance establecida correctamente")
+except Exception as e:
+    print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
+    print("⚠️ Verifica que la API Key sea válida y que la IP de Railway esté en la lista blanca")
+    client = None
+    raise  # Detiene la ejecución
 
 # ========== PAPER TRADING ==========
 class PaperTrading:
@@ -293,16 +300,13 @@ def estrategia_ema200(symbol):
     ESTRATEGIA EMA 200 + CONFIRMACIÓN
     1. Precio > EMA200 → SOLO LONG
     2. Precio < EMA200 → SOLO SHORT
-    3. Vela de confirmación (cruza la EMA)
-    4. SL en la mecha de la vela
-    5. TP 2:1
+    3. Cruce de EMA200 + Vela fuerte + Volumen
     """
     
     df = obtener_velas(symbol, '1m', 250)
     if df is None or len(df) < 201:
         return None
 
-    # Calcular EMA200
     ema200 = calcular_ema200(df)
     if ema200 is None:
         return None
@@ -310,24 +314,17 @@ def estrategia_ema200(symbol):
     precio_actual = df['close'].iloc[-1]
     precio_anterior = df['close'].iloc[-2]
     
-    # 🔥 FILTRO: Subida 24h
     subida_24h = obtener_subida_24h(symbol)
     if subida_24h is not None:
         if abs(subida_24h) > MAX_SUBIDA_24H:
             return None
 
-    # 🔥 DETECTAR CRUCE DE EMA200
-    # Cruce ALCISTA: precio_anterior < ema200 y precio_actual > ema200
-    # Cruce BAJISTA: precio_anterior > ema200 y precio_actual < ema200
-    
     cruce_alcista = precio_anterior < ema200 and precio_actual > ema200
     cruce_bajista = precio_anterior > ema200 and precio_actual < ema200
 
     if not cruce_alcista and not cruce_bajista:
         return None
 
-    # 🔥 VERIFICAR VELA DE CONFIRMACIÓN
-    # La vela debe ser fuerte (cuerpo > 50% del rango)
     ultima_vela = df.iloc[-1]
     rango = ultima_vela['high'] - ultima_vela['low']
     cuerpo = abs(ultima_vela['close'] - ultima_vela['open'])
@@ -335,32 +332,25 @@ def estrategia_ema200(symbol):
     if rango == 0 or cuerpo / rango < 0.5:
         return None
 
-    # 🔥 VERIFICAR VOLUMEN
     if not verificar_volumen_entrada(df):
         return None
 
-    # 🔥 DETERMINAR DIRECCIÓN
     if cruce_alcista:
         direccion = 'LONG'
-        # SL: mínimo de la última vela
         sl = ultima_vela['low']
-    else:  # cruce_bajista
+    else:
         direccion = 'SHORT'
-        # SL: máximo de la última vela
         sl = ultima_vela['high']
 
     entrada = precio_actual
 
-    # 🔥 CALCULAR SL y TP con porcentajes
     if direccion == 'LONG':
-        # SL es el mínimo de la vela o el % definido
         sl_price = min(sl, entrada * (1 - SL_PORCENTAJE_PRECIO / 100))
         tp = entrada * (1 + TP_PORCENTAJE_PRECIO / 100)
-    else:  # SHORT
+    else:
         sl_price = max(sl, entrada * (1 + SL_PORCENTAJE_PRECIO / 100))
         tp = entrada * (1 - TP_PORCENTAJE_PRECIO / 100)
 
-    # 🔥 CALCULAR R:R
     if direccion == 'LONG':
         riesgo = entrada - sl_price
         recompensa = tp - entrada
@@ -370,7 +360,7 @@ def estrategia_ema200(symbol):
 
     rr = recompensa / riesgo if riesgo > 0 else 0
 
-    if rr < 0.8:  # Mínimo 0.8:1
+    if rr < 0.8:
         return None
 
     return {
@@ -423,7 +413,6 @@ def main():
     print("📝 MODO PAPER TRADING")
     print("💡 Presiona Ctrl+C para detener\n")
 
-    # Diagnóstico rápido
     print("🔍 Realizando diagnóstico inicial...")
     try:
         pares_test = obtener_pares_con_volumen()
@@ -468,8 +457,12 @@ def main():
                             print(f"   📊 Subida 24h: {senal['subida_24h']:.1f}%")
                         print(f"   📈 ENTRADA: ${senal['entrada']:.4f}")
 
-                        print(f"   🎯 TP: ${senal['tp']:.4f} (+{senal['tp_precio']:.2f}% precio → +{senal['tp_capital']}% capital | R:R {senal['rr']:.2f}:1)")
-                        print(f"   🛑 SL: ${senal['sl']:.4f} (-{senal['sl_precio']:.2f}% precio → -{senal['sl_capital']}% capital)")
+                        if senal['direccion'] == 'LONG':
+                            print(f"   🎯 TP: ${senal['tp']:.4f} (+{senal['tp_precio']:.2f}% precio → +{senal['tp_capital']}% capital | R:R {senal['rr']:.2f}:1)")
+                            print(f"   🛑 SL: ${senal['sl']:.4f} (-{senal['sl_precio']:.2f}% precio → -{senal['sl_capital']}% capital)")
+                        else:
+                            print(f"   🎯 TP: ${senal['tp']:.4f} (-{senal['tp_precio']:.2f}% precio → +{senal['tp_capital']}% capital | R:R {senal['rr']:.2f}:1)")
+                            print(f"   🛑 SL: ${senal['sl']:.4f} (+{senal['sl_precio']:.2f}% precio → -{senal['sl_capital']}% capital)")
 
                         print(f"   ⚡ Apalancamiento: x{senal['apalancamiento']}")
                         print(f"   💰 Capital usado: {senal['capital_por_trade']:.1f}%")
