@@ -1,6 +1,6 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN CON PROXY WEBSHARE CORREGIDO
+# VERSIÓN SIN PRUEBA DE PROXY (MÁS ESTABLE)
 # ============================================
 
 import time
@@ -13,8 +13,6 @@ from binance.exceptions import BinanceAPIException
 import json
 import ta
 import os
-import socket
-import urllib.request
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
@@ -26,9 +24,7 @@ PROXY_PUERTO = "80"
 PROXY_USUARIO = "Ipnwlrhq"
 PROXY_CONTRASEÑA = "8e2vbj68pj30"
 
-# 🔥 Formato correcto para Webshare
 proxy_url = f"http://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
-
 proxies = {
     'http': proxy_url,
     'https': proxy_url,
@@ -42,7 +38,7 @@ os.environ['HTTPS_PROXY'] = proxy_url
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
-TIMEOUT_API = 60  # 🔥 Aumentado a 60 segundos
+TIMEOUT_API = 60
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -79,25 +75,16 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== VERIFICAR PROXY ==========
-print("═" * 80)
-print("🔍 VERIFICANDO PROXY WEBSHARE")
-print("═" * 80)
-print(f"📌 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
-print(f"📌 Usuario: {PROXY_USUARIO}")
-print("═" * 80)
-
-# Probar el proxy con una petición simple
-try:
-    test_ip = requests.get('https://api.ipify.org', proxies=proxies, timeout=10)
-    print(f"✅ Proxy funcionando. IP pública: {test_ip.text}")
-except Exception as e:
-    print(f"⚠️ Error al probar el proxy: {str(e)[:100]}")
-    print("   Continuando de todas formas...")
-
 # ========== CONEXIÓN A BINANCE CON PROXY ==========
+print("═" * 80)
+print("📈 BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO")
+print("═" * 80)
+print("📊 CONFIGURACIÓN DEL PROXY:")
+print(f"   🔥 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
+print(f"   🔥 Usuario: {PROXY_USUARIO}")
+print("═" * 80)
+
 print(f"\n🔄 Conectando a Binance a través del proxy...")
-print(f"   Timeout: {TIMEOUT_API}s")
 
 try:
     client = Client(
