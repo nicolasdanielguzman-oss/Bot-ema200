@@ -2,4 +2,5 @@ python-binance
 pandas
 ta
 requests
-pysocks
+numpy
+Flask
