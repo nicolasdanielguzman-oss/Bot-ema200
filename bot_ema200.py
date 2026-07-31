@@ -1,44 +1,36 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN CON SERVIDOR WEB PARA RENDER
+# CON RELOJ DE EJECUCIÓN Y ALERTAS TELEGRAM
 # ============================================
 
 import time
 import requests
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
 import json
 import ta
 import os
-import socket
-import urllib.request
 import threading
 
-# ========== SERVIDOR WEB PARA RENDER ==========
-try:
-    from flask import Flask
-    
-    app = Flask(__name__)
-    
-    @app.route('/')
-    @app.route('/health')
-    def health_check():
-        return "Bot funcionando correctamente", 200
-    
-    def run_webserver():
-        app.run(host='0.0.0.0', port=10000, debug=False)
-    
-    # Iniciar el servidor en un hilo separado
-    server_thread = threading.Thread(target=run_webserver, daemon=True)
-    server_thread.start()
-    print("✅ Servidor web iniciado en el puerto 10000")
-    print("   URL: https://bot-ema200.onrender.com")
-except Exception as e:
-    print(f"⚠️ No se pudo iniciar el servidor web: {e}")
-    print("   El bot seguirá funcionando, pero podría dormirse en Render")
+# ========== CONFIGURACIÓN DE TELEGRAM ==========
+TELEGRAM_TOKEN = "8541320925:AAEn0KDieN6l8iuXhhT7VMqc59pTGaCWF_c"
+TELEGRAM_CHAT_ID = "102341332"
+
+def enviar_alerta_telegram(mensaje):
+    """Envía un mensaje por Telegram"""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            'chat_id': TELEGRAM_CHAT_ID,
+            'text': mensaje,
+            'parse_mode': 'HTML'
+        }
+        requests.post(url, data=payload, timeout=10)
+    except Exception as e:
+        print(f"⚠️ Error al enviar alerta por Telegram: {e}")
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
@@ -58,6 +50,7 @@ VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
 TIMEOUT_API = 60
+HORA_INICIO = datetime.now()
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -119,12 +112,10 @@ try:
     print("✅ Conexión a Binance establecida correctamente")
     print("   ✅ API Key válida")
     print("   ✅ Proxy funcionando correctamente")
+    enviar_alerta_telegram("🚀 <b>Bot de Trading Iniciado</b>\n\n✅ Conexión a Binance establecida.\n✅ Estrategia EMA 200 activa.\n✅ Monitoreando el mercado...")
 except Exception as e:
     print(f"❌ Error al conectar con Binance: {str(e)[:300]}")
-    print("\n💡 POSIBLES SOLUCIONES:")
-    print("   1. Verifica que el proxy esté activo")
-    print("   2. Comprueba que las credenciales sean correctas")
-    print("   3. Asegúrate de que el VPS tenga conexión a internet")
+    enviar_alerta_telegram(f"❌ <b>ERROR CRÍTICO</b>\nNo se pudo conectar a Binance.\nError: {str(e)[:200]}")
     client = None
     raise
 
@@ -135,6 +126,7 @@ class PaperTrading:
         self.operaciones = []
         self.operaciones_abiertas = []
         self.historial = []
+        self.ultimo_mensaje_hora = datetime.now()
 
     def abrir_operacion(self, symbol, entrada, sl, tp, direccion):
         capital_operacion = self.capital * CAPITAL_POR_OPERACION
@@ -162,6 +154,17 @@ class PaperTrading:
         }
         self.operaciones_abiertas.append(operacion)
         self.operaciones.append(operacion)
+        
+        # Alerta de nueva operación
+        mensaje = f"📊 <b>NUEVA OPERACIÓN ABIERTA</b>\n\n"
+        mensaje += f"Par: {symbol}\n"
+        mensaje += f"Dirección: {direccion}\n"
+        mensaje += f"Entrada: ${entrada:.4f}\n"
+        mensaje += f"TP: ${tp:.4f} (+{TP_CAPITAL}% capital)\n"
+        mensaje += f"SL: ${sl:.4f} (-{SL_CAPITAL}% capital)\n"
+        mensaje += f"Capital expuesto: ${capital_operacion:.2f}"
+        enviar_alerta_telegram(mensaje)
+        
         return operacion
 
     def cerrar_operacion(self, operacion, precio_salida, motivo):
@@ -183,6 +186,17 @@ class PaperTrading:
         self.operaciones_abiertas.remove(operacion)
         self.historial.append(operacion)
 
+        # Alerta de cierre
+        emoji = "✅" if pnl > 0 else "❌"
+        mensaje = f"{emoji} <b>OPERACIÓN CERRADA</b>\n\n"
+        mensaje += f"Par: {operacion['symbol']}\n"
+        mensaje += f"Dirección: {operacion['direccion']}\n"
+        mensaje += f"Entrada: ${operacion['entrada']:.4f}\n"
+        mensaje += f"Salida: ${precio_salida:.4f}\n"
+        mensaje += f"Motivo: {motivo}\n"
+        mensaje += f"Resultado: ${pnl:.2f} ({pnl_pct:.1f}% capital)"
+        enviar_alerta_telegram(mensaje)
+
         return pnl, pnl_pct
 
     def verificar_sl_tp(self):
@@ -197,18 +211,14 @@ class PaperTrading:
 
                 if op['direccion'] == 'LONG':
                     if precio_actual <= op['sl']:
-                        pnl, pnl_pct = self.cerrar_operacion(op, op['sl'], 'STOP LOSS')
-                        print(f"\n   ❌ {op['symbol']} - SL ACTIVADO! Pérdida: ${pnl:.2f} ({pnl_pct:.1f}%)")
+                        self.cerrar_operacion(op, op['sl'], 'STOP LOSS')
                     elif precio_actual >= op['tp']:
-                        pnl, pnl_pct = self.cerrar_operacion(op, op['tp'], 'TAKE PROFIT')
-                        print(f"\n   ✅ {op['symbol']} - TP ALCANZADO! Ganancia: ${pnl:.2f} ({pnl_pct:.1f}%)")
+                        self.cerrar_operacion(op, op['tp'], 'TAKE PROFIT')
                 else:
                     if precio_actual >= op['sl']:
-                        pnl, pnl_pct = self.cerrar_operacion(op, op['sl'], 'STOP LOSS')
-                        print(f"\n   ❌ {op['symbol']} - SL ACTIVADO! Pérdida: ${pnl:.2f} ({pnl_pct:.1f}%)")
+                        self.cerrar_operacion(op, op['sl'], 'STOP LOSS')
                     elif precio_actual <= op['tp']:
-                        pnl, pnl_pct = self.cerrar_operacion(op, op['tp'], 'TAKE PROFIT')
-                        print(f"\n   ✅ {op['symbol']} - TP ALCANZADO! Ganancia: ${pnl:.2f} ({pnl_pct:.1f}%)")
+                        self.cerrar_operacion(op, op['tp'], 'TAKE PROFIT')
 
             except Exception as e:
                 print(f"   ❌ Error verificando {op['symbol']}: {str(e)[:80]}")
@@ -426,7 +436,9 @@ def estrategia_ema200(symbol):
 # ========== MAIN ==========
 
 def main():
+    global HORA_INICIO
     paper = PaperTrading(CAPITAL_INICIAL)
+    HORA_INICIO = datetime.now()
 
     print("═" * 80)
     print("📈 BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO")
@@ -464,9 +476,22 @@ def main():
         print("⚠️ Revisa la conexión del proxy")
 
     contador = 0
+    ultimo_resumen = datetime.now()
     try:
         while True:
             paper.verificar_sl_tp()
+
+            # ========== RELOJ DE TIEMPO TRANSCURRIDO (CADA HORA) ==========
+            ahora = datetime.now()
+            tiempo_ejecucion = ahora - HORA_INICIO
+            horas = int(tiempo_ejecucion.total_seconds() // 3600)
+            minutos = int((tiempo_ejecucion.total_seconds() % 3600) // 60)
+            segundos = int(tiempo_ejecucion.total_seconds() % 60)
+
+            if contador % 240 == 0 and contador > 0:  # Cada hora (240 ciclos de 15 segundos)
+                mensaje_tiempo = f"⏱️ Bot activo: {horas}h {minutos}m {segundos}s"
+                print(mensaje_tiempo)
+                enviar_alerta_telegram(mensaje_tiempo)
 
             if len(paper.operaciones_abiertas) < MAX_OPERACIONES_ABIERTAS:
 
@@ -538,6 +563,7 @@ def main():
         print("\n\n⏹️ Bot detenido")
         paper.mostrar_historial_completo()
         paper.mostrar_resumen()
+        enviar_alerta_telegram("⏹️ Bot detenido manualmente\nResumen final generado.")
 
 if __name__ == "__main__":
     main()
