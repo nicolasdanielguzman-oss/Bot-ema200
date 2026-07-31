@@ -1,6 +1,6 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN SIN PROXY PARA RENDER
+# VERSIÓN PARA VPS CON PROXY NORDVPN
 # ============================================
 
 import time
@@ -13,16 +13,27 @@ from binance.exceptions import BinanceAPIException
 import json
 import ta
 import os
+import socket
+import urllib.request
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
 
+# ========== CONFIGURACIÓN DEL PROXY (NORDVPN) ==========
+PROXY_HOST = "nl.socks.nordhold.net"
+PROXY_PUERTO = "1080"
+PROXY_USUARIO = "zNrxnBebGWxV6zSxzHGe26ar"
+PROXY_CONTRASEÑA = "k2Qji91Au1JxN61SUercEfpW"
+
+proxy_url = f"socks5h://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
+proxies = {'http': proxy_url, 'https': proxy_url}
+
 # ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
-TIMEOUT_API = 30
+TIMEOUT_API = 60
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -59,34 +70,37 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== CONEXIÓN DIRECTA A BINANCE ==========
+# ========== CONEXIÓN A BINANCE CON PROXY ==========
 print("═" * 80)
 print("📈 BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO")
 print("═" * 80)
 print("📊 CONFIGURACIÓN:")
-print(f"   🔥 Conexión: DIRECTA (sin proxy)")
+print(f"   🔥 Conexión: PROXY NORDVPN")
+print(f"   🔥 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
 print(f"   🔥 Timeout: {TIMEOUT_API}s")
 print("═" * 80)
 
-print(f"\n🔄 Conectando a Binance...")
+print(f"\n🔄 Conectando a Binance a través del proxy...")
 
 try:
     client = Client(
         API_KEY,
         API_SECRET,
         requests_params={
+            'proxies': proxies,
             'timeout': TIMEOUT_API
         }
     )
     client.ping()
     print("✅ Conexión a Binance establecida correctamente")
     print("   ✅ API Key válida")
+    print("   ✅ Proxy funcionando correctamente")
 except Exception as e:
-    print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
+    print(f"❌ Error al conectar con Binance: {str(e)[:300]}")
     print("\n💡 POSIBLES SOLUCIONES:")
-    print("   1. Ve a Binance → API Management")
-    print("   2. Activa 'Unrestricted (Less Secure)'")
-    print("   3. Genera una nueva API Key si es necesario")
+    print("   1. Verifica que el proxy esté activo")
+    print("   2. Comprueba que las credenciales sean correctas")
+    print("   3. Asegúrate de que el VPS tenga conexión a internet")
     client = None
     raise
 
@@ -423,7 +437,7 @@ def main():
         print(f"   ✅ Conexión exitosa. El bot está listo.")
     except Exception as e:
         print(f"❌ Error al obtener pares: {str(e)[:100]}")
-        print("⚠️ Revisa la configuración de la API Key en Binance")
+        print("⚠️ Revisa la conexión del proxy")
 
     contador = 0
     try:
