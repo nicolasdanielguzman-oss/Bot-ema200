@@ -1,6 +1,6 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN PARA VPS CON PROXY NORDVPN
+# VERSIÓN CON SERVIDOR WEB PARA RENDER
 # ============================================
 
 import time
@@ -15,6 +15,30 @@ import ta
 import os
 import socket
 import urllib.request
+import threading
+
+# ========== SERVIDOR WEB PARA RENDER ==========
+try:
+    from flask import Flask
+    
+    app = Flask(__name__)
+    
+    @app.route('/')
+    @app.route('/health')
+    def health_check():
+        return "Bot funcionando correctamente", 200
+    
+    def run_webserver():
+        app.run(host='0.0.0.0', port=10000, debug=False)
+    
+    # Iniciar el servidor en un hilo separado
+    server_thread = threading.Thread(target=run_webserver, daemon=True)
+    server_thread.start()
+    print("✅ Servidor web iniciado en el puerto 10000")
+    print("   URL: https://bot-ema200.onrender.com")
+except Exception as e:
+    print(f"⚠️ No se pudo iniciar el servidor web: {e}")
+    print("   El bot seguirá funcionando, pero podría dormirse en Render")
 
 # ========== CONFIGURACIÓN API ==========
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
