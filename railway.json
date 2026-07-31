@@ -1,5 +1,0 @@
-{
-  "deploy": {
-    "startCommand": "python bot_ema200.py"
-  }
-}
