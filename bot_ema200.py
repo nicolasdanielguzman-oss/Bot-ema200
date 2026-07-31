@@ -1,6 +1,6 @@
 # ============================================
 # BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO
-# VERSIÓN SIMPLIFICADA - SIN HEADERS DUPLICADOS
+# VERSIÓN SIN PROXY PARA RENDER
 # ============================================
 
 import time
@@ -18,23 +18,11 @@ import os
 API_KEY = "t3lg8hVrh4gCMiEDynDZGUe1MEIHnhHDuJthfO0t9908GB20qHLgeU9Nie7ep84T"
 API_SECRET = "3tkN4MxxBQdBE9VjpXwOsGGbwYmkcvZf3LESGjZ8i01VgGE5fIbOk3ORSnQK5nCA"
 
-# ========== CONFIGURACIÓN DEL PROXY (WEBSHARE.IO) ==========
-PROXY_HOST = "p.webshare.io"
-PROXY_PUERTO = "80"
-PROXY_USUARIO = "Ipnwlrhq"
-PROXY_CONTRASEÑA = "8e2vbj68pj30"
-
-proxy_url = f"http://{PROXY_USUARIO}:{PROXY_CONTRASEÑA}@{PROXY_HOST}:{PROXY_PUERTO}"
-proxies = {
-    'http': proxy_url,
-    'https': proxy_url,
-}
-
 # ========== CONFIGURACIÓN DE PARÁMETROS ==========
 VOLUMEN_MINIMO = 3_000_000
 VOLUMEN_MAXIMO = 1_000_000_000
 TIEMPO_ESPERA = 15
-TIMEOUT_API = 60
+TIMEOUT_API = 30
 
 # ========== PARÁMETROS TENDENCIA ==========
 TIMEFRAME = '1m'
@@ -71,42 +59,34 @@ PAPER_TRADING = True
 CAPITAL_INICIAL = 1000
 MAX_OPERACIONES_ABIERTAS = 2
 
-# ========== CONEXIÓN A BINANCE CON PROXY ==========
+# ========== CONEXIÓN DIRECTA A BINANCE ==========
 print("═" * 80)
 print("📈 BOT EMA 200 + CONFIRMACIÓN - 1 MINUTO")
 print("═" * 80)
-print("📊 CONFIGURACIÓN DEL PROXY:")
-print(f"   🔥 Proxy: {PROXY_HOST}:{PROXY_PUERTO}")
-print(f"   🔥 Usuario: {PROXY_USUARIO}")
+print("📊 CONFIGURACIÓN:")
+print(f"   🔥 Conexión: DIRECTA (sin proxy)")
+print(f"   🔥 Timeout: {TIMEOUT_API}s")
 print("═" * 80)
 
-print(f"\n🔄 Conectando a Binance a través del proxy...")
+print(f"\n🔄 Conectando a Binance...")
 
 try:
-    # 🔥 SIMPLIFICADO: Solo pasamos los proxies, sin headers duplicados
     client = Client(
         API_KEY,
         API_SECRET,
         requests_params={
-            'proxies': proxies,
             'timeout': TIMEOUT_API
         }
     )
-    
-    # Probar la conexión con ping
     client.ping()
     print("✅ Conexión a Binance establecida correctamente")
     print("   ✅ API Key válida")
-    print("   ✅ Proxy funcionando correctamente")
-    
 except Exception as e:
-    print(f"❌ Error al conectar con Binance: {str(e)[:300]}")
+    print(f"❌ Error al conectar con Binance: {str(e)[:200]}")
     print("\n💡 POSIBLES SOLUCIONES:")
-    print("   1. Verifica que las credenciales del proxy sean correctas")
-    print("   2. Comprueba que tengas saldo en Webshare")
-    print("   3. Prueba con el puerto 8080 en lugar de 80")
-    print("   4. Asegúrate de que el proxy esté activo en Webshare")
-    print("   5. Si usas Binance.US, cambia a tld='us'")
+    print("   1. Ve a Binance → API Management")
+    print("   2. Activa 'Unrestricted (Less Secure)'")
+    print("   3. Genera una nueva API Key si es necesario")
     client = None
     raise
 
@@ -441,10 +421,9 @@ def main():
         pares_test = obtener_pares_con_volumen()
         print(f"✅ Pares encontrados: {len(pares_test)}")
         print(f"   ✅ Conexión exitosa. El bot está listo.")
-        print(f"   ✅ Proxy Webshare configurado correctamente")
     except Exception as e:
         print(f"❌ Error al obtener pares: {str(e)[:100]}")
-        print("⚠️ Verifica la conexión del proxy")
+        print("⚠️ Revisa la configuración de la API Key en Binance")
 
     contador = 0
     try:
