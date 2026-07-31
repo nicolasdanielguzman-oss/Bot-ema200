@@ -1,0 +1,16 @@
+services:
+  # Servicio principal: el bot
+  - type: web
+    name: bot-ema200
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot_ema200.py
+    plan: free
+    
+  # Servicio adicional: cron job para mantener activo
+  - type: cron
+    name: keep-alive
+    schedule: "*/5 * * * *"  # Cada 5 minutos
+    env: python
+    buildCommand: pip install requests
+    startCommand: python -c "import requests; requests.get('https://bot-ema200.onrender.com')"
